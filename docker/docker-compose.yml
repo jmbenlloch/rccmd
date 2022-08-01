@@ -1,0 +1,51 @@
+version: '3.2'
+
+services:
+  server1:
+    image: go
+    volumes: 
+      - ${REPOPATH}:/root/rccmd
+      - ${REPOPATH}/docker/supervisord.conf:/etc/supervisor/supervisord.conf
+      - ${REPOPATH}/docker/shutdown_nonblocking.sh:/usr/sbin/shutdown
+    entrypoint: ["supervisord"]
+    healthcheck:
+      test: /root/rccmd/docker/healt_check.sh
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  server2:
+    image: go
+    volumes: 
+      - ${REPOPATH}:/root/rccmd
+      - ${REPOPATH}/docker/supervisord.conf:/etc/supervisor/supervisord.conf
+      - ${REPOPATH}/docker/shutdown_blocking.sh:/usr/sbin/shutdown
+    entrypoint: ["supervisord"]
+    healthcheck:
+      test: /root/rccmd/docker/healt_check.sh
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  monitor:
+    image: go
+    volumes:
+      - ${REPOPATH}:/root/rccmd
+    entrypoint: ["service", "ssh", "start", "-D"]
+    deploy:
+      endpoint_mode: dnsrr
+
+  sut:
+    image: go
+    volumes:
+      - ${REPOPATH}:/root/rccmd
+    command: ["ssh", "-o", "StrictHostKeyChecking=no", "monitor", "/root/rccmd/docker/system_check.sh"]
+    depends_on:
+      server1:
+        condition: service_healthy
+      server2:
+        condition: service_healthy
+    deploy:
+      endpoint_mode: dnsrr
