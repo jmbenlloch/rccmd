@@ -1,0 +1,12 @@
+[Unit]
+Description=NEXT rccmd service
+
+[Service]
+User=root
+WorkingDirectory=/opt/rccmd
+ExecStart=/opt/rccmd/rccmdServer/rccmdServer -src 192.168.0.9 -dst 192.168.0.255
+StandardOutput=file:/var/log/rccmd.log
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

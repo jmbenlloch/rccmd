@@ -1,0 +1,82 @@
+#!/bin/sh
+#
+# chkconfig: - 99 01
+# description: NEXTrccmd service
+#
+# File :
+#
+RED='\e[31m'
+GREEN='\e[32m'
+STD='\e[39m'
+
+
+# Source function library
+# Solaris doesn't have an rc.d directory, so do a test first
+if [ -f /etc/rc.d/init.d/functions ]; then
+	. /etc/rc.d/init.d/functions
+elif [ -f /etc/init.d/functions ]; then
+	. /etc/init.d/functions
+fi
+
+# See how we were called.
+case "$1" in
+	start)
+		echo -e "Starting NEXTrccmd:"
+		if [ -z "$(ps aux | grep rccmdServer | grep -v grep)" ]; then
+			/opt/rccmd/rccmdServer/rccmdServer -src 192.168.0.9 -dst 192.168.0.255 >> /var/log/rccmd.log &
+
+			sleep 1
+			if [ ! -z "$(ps aux | grep rccmdServer | grep -v grep)" ]; then
+				echo -e "$GREEN Done.$STD"
+				exit 0
+			else
+				echo -e "$RED Error starting the NEXTrccmd service.$STD"
+				exit 1
+			fi
+		else
+			echo -e "$RED Aborting startup. The  NEXTrccmd service is already active.$STD"
+			exit 1
+		fi
+		;;
+
+	stop)
+		echo -e "Stopping NEXTrccmd: "
+                if [ ! -z "$(ps aux | grep rccmdServer | grep -v grep)" ]; then
+                        kill -9 $(ps aux | grep rccmdServer | grep -v grep | awk '{print $2}')
+                        sleep 1
+                        if [ ! -z "$(ps aux | grep rccmdServer | grep -v grep)" ]; then
+                            echo ''
+                            echo -e "$RED Warning - NEXTrccmd did not exit in a timely manner.$STD"
+                            exit 1
+                        else
+                            echo -e "$GREEN Done. $STD"
+                        fi
+                else
+                        echo -e "$RED Aborting stopping. The  NEXTrccmd service is already stopped.$STD"
+                fi
+		exit 0
+		;;
+
+	status)
+		echo -e "Status NEXTrccmd: "
+		if [ -z "$(ps aux | grep rccmdServer | grep -v grep)" ]; then
+		    echo -e "$RED NEXTrccmd is stopped.$STD"
+		    exit 1
+		else
+		    echo -e "$GREEN NEXTrccmd is running. $STD"
+		    exit 0
+		fi
+		;;
+
+	restart)
+		$0 stop
+		$0 start
+		;;
+	*)
+		echo "Usage: NEXTrccmd {start|stop|restart}"
+		exit 2
+		;;
+
+esac
+
+# End of this script

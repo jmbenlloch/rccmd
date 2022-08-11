@@ -41,6 +41,42 @@ Currently only implemented for linux systems. To schedule the shutdown the comma
 # Installation
 TODO: Describe how to create the service in the different cases.
 
+`rccmdServer` must run as a service on the desired machines. In the folder `service_templates` to examples for `init.d` and `systemd` are shown. In both cases the arguments are written directly in the command line (TODO: add a config file) and a log file is written in /var/log/rccmd.log.
+
+To create the new service follow this procedure:
+
+### init.d
+
+Install the service:
+
+`ln -s /opt/rccmd/service_templates/next_rccmd /etc/init.d/next_rccmd`
+
+To start/stop/status:
+
+```
+/etc/init.d/NEXTrccmd start
+/etc/init.d/NEXTrccmd stop
+/etc/init.d/NEXTrccmd status
+
+```
+
+### systemd
+
+To install the service:
+
+```
+ln -s /opt/rccmd/service_templates/next-rccmd.service /etc/systemd/system/next-rccmd.service
+systemctl enable example.service
+```
+
+To start/stop/status:
+
+```
+systemctl start next-rccmd.service
+systemctl stop next-rccmd.service
+systemctl status next-rccmd.service
+```
+
 # RCCMD messages
 CS141 allows for different actions to be configured for many different events. The relevant ones for this system are these:
 
