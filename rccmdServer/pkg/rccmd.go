@@ -1,14 +1,14 @@
-package main
+package rccmd
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"math"
 	"net"
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -37,7 +37,7 @@ var ErrMessageParsing = errors.New("Could not parse event message")
 var ErrUnkownEventType = errors.New("Unknown event type")
 var ErrBatteryDuration = errors.New("Could not read battery duration on Powerfail event")
 
-func processPacket(addr *net.UDPAddr, upsIP net.IP, message string) {
+func ProcessPacket(addr *net.UDPAddr, upsIP net.IP, message string) {
 	log.WithFields(
 		log.Fields{
 			"ip":      addr.IP,
@@ -80,7 +80,17 @@ func scheduleShutdown(time float64) {
 		},
 	).Debug("Scheduling shutdown")
 
-	out, err := exec.Command("shutdown", "-P", strconv.Itoa(scheduleTime)).Output()
+	var output []byte
+	var err error
+	switch runtime.GOOS {
+	case "linux":
+		fmt.Println("Linux")
+		output, err = exec.Command("shutdown", "-P", strconv.Itoa(scheduleTime)).Output()
+	case "windows":
+		fmt.Println("Windows")
+		// Time is in seconds
+		output, err = exec.Command("shutdown", "-s", "-t", strconv.Itoa(scheduleTime*60)).Output()
+	}
 
 	if err != nil {
 		fmt.Printf("%v", err)
@@ -91,7 +101,7 @@ func scheduleShutdown(time float64) {
 		).Error("Error scheduling shutdown")
 	}
 
-	message := string(out)
+	message := string(output)
 	log.WithFields(
 		log.Fields{
 			"output": message,
@@ -102,7 +112,17 @@ func scheduleShutdown(time float64) {
 func cancelShutdown() {
 	log.Debug("Cancelling scheduled shutdown")
 
-	out, err := exec.Command("shutdown", "-c").Output()
+	var output []byte
+	var err error
+	switch runtime.GOOS {
+	case "linux":
+		fmt.Println("Linux")
+		output, err = exec.Command("shutdown", "-c").Output()
+	case "windows":
+		fmt.Println("Windows")
+		output, err = exec.Command("shutdown", "-a").Output()
+	}
+
 	if err != nil {
 		fmt.Printf("%v", err)
 		log.WithFields(
@@ -111,7 +131,7 @@ func cancelShutdown() {
 			},
 		).Error("Error cancelling scheduled shutdown")
 	}
-	message := string(out)
+	message := string(output)
 	log.WithFields(
 		log.Fields{
 			"output": message,
@@ -119,7 +139,7 @@ func cancelShutdown() {
 	).Debug("Command output")
 }
 
-func findTestHostIP() net.IP {
+func FindTestHostIP() net.IP {
 	ips, err := net.LookupIP("monitor") // must be the hostname used in docker
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Could not get IPs: %v\n", err)
@@ -131,68 +151,6 @@ func findTestHostIP() net.IP {
 	}
 	upsIP := net.ParseIP(ips[0].String())
 	return upsIP
-}
-
-func main() {
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetOutput(os.Stdout)
-
-	log.Info("RCCMD server started")
-
-	bcastPtr := flag.String("dst", "0.0.0.0", "broadcast IP receiving RCCMD messages")
-	srcPtr := flag.String("src", "0.0.0.0", "UPS IP sending RCCMD messages")
-	testPtr := flag.Bool("test", false, "Test mode with docker")
-	debugPtr := flag.Bool("debug", false, "Set logging level to DEBUG")
-	flag.Parse()
-
-	if *debugPtr {
-		log.SetLevel(log.DebugLevel)
-	}
-
-	bcastIP := net.ParseIP(*bcastPtr)
-	upsIP := net.ParseIP(*srcPtr)
-
-	if *testPtr {
-		upsIP = findTestHostIP()
-		fmt.Println(upsIP)
-	}
-
-	log.WithFields(
-		log.Fields{
-			"broadcast": bcastIP,
-			"ups":       upsIP,
-		},
-	).Debug("Configuration")
-
-	p := make([]byte, 2048)
-	addr := net.UDPAddr{
-		Port: 6003,
-		IP:   bcastIP,
-	}
-
-	server, err := net.ListenUDP("udp", &addr)
-	if err != nil {
-		log.WithFields(
-			log.Fields{
-				"error": err,
-			},
-		).Fatal("Error opening socket")
-	}
-
-	for {
-		size, remoteaddr, err := server.ReadFromUDP(p)
-		if err != nil {
-			log.WithFields(
-				log.Fields{
-					"error": err,
-				},
-			).Fatal("Error reading from socket")
-			continue
-		}
-
-		message := string(p[:size])
-		go processPacket(remoteaddr, upsIP, message)
-	}
 }
 
 func ParseMessage(message string) (Command, error) {

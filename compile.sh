@@ -1,9 +1,9 @@
 #!/bin/bash
 cd /root/rccmd/rccmdServer/
-go build .
+mage
 
 echo "Running unit tests"
-go test
+go test ./pkg
 if [ $? -ne 0 ]; then
 	echo "Error in unit tests"
 	exit 1

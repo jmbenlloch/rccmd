@@ -9,6 +9,10 @@ RUN echo "root:pass" | chpasswd
 RUN ssh-keygen -t rsa -f /root/.ssh/id_rsa -N ""
 RUN cat /root/.ssh/id_rsa.pub > /root/.ssh/authorized_keys
 
+RUN  git clone https://github.com/magefile/mage && \
+	 cd mage && \
+	 go run bootstrap.go
+
 # Incidentally creates /run/sshd
 # RUN service ssh start
 # Run the service in the foreground when starting the container
