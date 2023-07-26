@@ -8,6 +8,10 @@ echo shutdown $1 $2
 function poweroff {
 	echo poweroff $1
 	sleep "$1"m
+	if [ $(( $? != 0 )) ]; then
+		echo Error
+		exit 1
+	fi
 	echo "Shutdown now"
 }
 
