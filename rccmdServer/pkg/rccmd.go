@@ -85,7 +85,10 @@ func scheduleShutdown(time float64) {
 	switch runtime.GOOS {
 	case "linux":
 		fmt.Println("Linux")
-		output, err = exec.Command("shutdown", "-P", strconv.Itoa(scheduleTime)).Output()
+		output, err = exec.Command("shutdown", "-P", "--no-wall", strconv.Itoa(scheduleTime)).Output()
+		if err != nil {
+			output, err = exec.Command("shutdown", "-P", strconv.Itoa(scheduleTime)).Output()
+		}
 	case "windows":
 		fmt.Println("Windows")
 		// Time is in seconds
